@@ -2,13 +2,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import http from "http";
-import path from "path";
-import { fileURLToPath } from "url";
-import job from "./src/services/cron.js";
-
 import express from "express";
 import cors from "cors";
 
+import job from "./src/services/cron.js";
 import initSocket from "./src/socket/index.js";
 import apiRoutes from "./src/routes/index.js";
 import {
@@ -18,18 +15,19 @@ import {
 
 const app = express();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+// -------------------------
 // Middleware
-if (process.env.NODE_ENV !== "production") {
-    app.use(
-        cors({
-            origin: process.env.CLIENT_URL || "http://localhost:5173",
-            credentials: true,
-        })
-    );
-}
+// -------------------------
+
+app.use(
+    cors({
+        origin: [
+            "http://localhost:5173", // Local frontend
+            process.env.CLIENT_URL,  // Render frontend
+        ].filter(Boolean),
+        credentials: true,
+    })
+);
 
 app.use(express.json({ limit: "1mb" }));
 
@@ -45,25 +43,6 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api", apiRoutes);
-
-// -------------------------
-// Serve React App (Production)
-// -------------------------
-
-if (process.env.NODE_ENV === "production") {
-    const publicPath = path.join(__dirname, "public");
-
-    app.use(express.static(publicPath));
-
-    app.get("*", (req, res, next) => {
-        // Let Express handle API routes normally
-        if (req.path.startsWith("/api")) {
-            return next();
-        }
-
-        res.sendFile(path.join(publicPath, "index.html"));
-    });
-}
 
 // -------------------------
 // Error Handlers
